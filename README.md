@@ -2,4 +2,4 @@
 ClauText To Cpp
 # ToDo
 Support Linux
-SUpport ClauText all? function, and anything?
+Support ClauText all? function, and anything?
