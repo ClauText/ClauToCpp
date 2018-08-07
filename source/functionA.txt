@@ -1,0 +1,535 @@
+﻿// Goal : clautext -> cpp
+
+#define _CRT_SECURE_NO_WARNINGS
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+
+// no fast lib!
+
+#define ARRAY_QUEUE std::deque // chk?
+#define VECTOR std::vector
+int log_result = 0; // why?
+
+#include <wiz/ClauText.h>
+
+#define INLINE inline
+
+#define NONE 0
+
+wiz::StringBuilder builder(102400);
+
+
+INLINE bool __expr___bool(const std::string& str)
+{
+	return str == "TRUE";
+}
+
+
+INLINE std::string __expr___add(const std::string& s1, const std::string& s2)
+{
+	return std::to_string(std::stoi(s1) + std::stoi(s2)); // change to int, double, ..
+}
+
+INLINE std::string __expr___divide(const std::string& s1, const std::string& s2) 
+{
+	return wiz::_toString(std::stoi(s1) / std::stoi(s2));
+}
+
+INLINE std::string __expr___modular(const std::string& s1, const std::string& s2)
+{
+	return wiz::_toString(std::stoi(s1) % std::stoi(s2));
+}
+
+INLINE std::string  __expr___COMP_LT_EQ(const std::string& s1, const std::string& s2)
+{
+	auto x = wiz::load_data::Utility::Compare(s1, s2, &builder);
+	if (x == "== 0" || x == "< 0") {
+		return "TRUE";
+	}
+	return "FALSE";
+}
+INLINE std::string __expr___COMP_GT_EQ(const std::string& s1, const std::string& s2)
+{
+	auto x = wiz::load_data::Utility::Compare(s1, s2, &builder);
+	if (x == "== 0" || x == "> 0") {
+		return "TRUE";
+	}
+	return "FALSE";
+}
+
+INLINE std::string __expr___OR(const std::string& x, const std::string& y)
+{
+	if (x == "TRUE" || y == "TRUE") {
+		return "TRUE";
+	}
+	return "FALSE";
+}
+INLINE std::string __expr___AND(const std::string& x, const std::string& y)
+{
+	if (x == "TRUE" && y == "TRUE")
+	{
+		return "TRUE";
+	}
+	return "FALSE";
+}
+
+INLINE std::string __expr___EQ(const std::string& x, const std::string& y)
+{
+	if (wiz::load_data::Utility::Compare(x, y, &builder) == "== 0") {
+		return "TRUE";
+	}
+	else {
+		return "FALSE";
+	}
+}
+// find "/~"
+INLINE std::string _Find(wiz::load_data::UserType& global, const std::string& str) {
+	std::string x = wiz::load_data::LoadData::Find(&global, str, &builder);
+	if(x.empty()) { return str; }
+	return x;
+}
+INLINE std::string __expr___concat_all(const std::vector<std::string>& vec) // chk for -> no inline?
+{
+	std::string result;
+
+	for (int i = 0; i < vec.size(); ++i) {
+		result += vec[i];
+	}
+	return result;
+}
+INLINE std::string __expr___concat(const std::string& str1, const std::string& str2)
+{
+	return str1 + str2;
+}
+
+// todo - add wiz::ExcuteData parameter?
+INLINE std::string __func___make(wiz::load_data::UserType& global, const wiz::ExcuteData& data, const std::string& str, const std::string& condition)
+{
+	std::string dir = str;
+
+	dir = wiz::load_data::LoadData::ToBool4(nullptr, global, dir, data, &builder);
+
+	std::string name;
+	for (int i = dir.size() - 1; i >= 0; --i)
+	{
+		if (dir[i] == '/') {
+			name = wiz::String::substring(dir, i + 1);
+			dir = wiz::String::substring(dir, 0, i - 1);
+			break;
+		}
+	}
+	if (dir.empty()) { dir = "."; }
+
+	wiz::load_data::LoadData::AddUserType(global, dir, name, "", condition, data, &builder);
+
+	return "";
+}
+INLINE std::string __func___assign(wiz::load_data::UserType& global, const wiz::ExcuteData& excuteData, std::map<std::string, std::string>& locals, const std::string& dir, const std::string& value, const std::string& condition)
+{
+	std::pair<std::string, std::string> _dir = wiz::load_data::LoadData::Find2(&global, dir);
+
+	//// todo!! - add locals to parameter.
+	if (_dir.first == "" && wiz::String::startsWith(_dir.second, "$local."))
+	{
+		locals[wiz::String::substring(_dir.second, 7)] = value;
+	}
+	else
+	{
+		wiz::load_data::LoadData::SetData(global, _dir.first, _dir.second, value, condition, excuteData, &builder);
+	}
+	return "";
+}
+
+INLINE std::string __func___assign2(wiz::load_data::UserType& global, const wiz::ExcuteData& excuteData, std::map<std::string, std::string>& locals, 
+	const std::string& _dir, const std::string& value, const std::string& condition)
+{
+	std::pair<std::string, std::string> dir = wiz::load_data::LoadData::Find2(&global, _dir);
+
+	{
+		if (dir.first == "" && wiz::String::startsWith(dir.second, "$local."))
+		{
+			locals[wiz::String::substring(dir.second, 7)] = value;
+		}
+		else {
+			wiz::load_data::LoadData::SetData(global, dir.first, dir.second, value, "TRUE", excuteData, &builder);
+		}
+	}
+
+	return "";
+}
+
+
+INLINE std::string __func___insert(wiz::load_data::UserType& global, const wiz::ExcuteData& excuteData, const std::string& dir, const std::string& value, const std::string& condition)
+{
+	wiz::load_data::LoadData::AddData(global, dir, value, condition, excuteData, &builder);
+
+	return "";
+}
+
+template <class T>
+INLINE std::string ToString(const T& data)
+{
+	return _toString(data);
+}
+
+template <>
+INLINE std::string ToString(const std::string& data)
+{
+	return data;
+}
+
+
+INLINE std::string CONCAT_ALL(const std::vector<std::string>& vec)
+{
+	std::string result;
+
+	for (int i = 0; i < vec.size(); ++i) {
+		result += vec[i];
+		if (i < vec.size() - 1) {
+			result += " ";
+		}
+	}
+
+	return result;
+}
+
+INLINE std::string __expr___NOTEQ(const std::string x, const std::string y)
+{
+	return (wiz::load_data::Utility::Compare(x, y, &builder) == "== 0") ? "FALSE" : "TRUE";
+}
+
+
+INLINE std::string __expr___AND_ALL(const std::vector<std::string>& vec)
+{
+	bool result = true;
+
+	for (int i = 0; i < vec.size(); ++i) {
+		result = result && (vec[i] == "TRUE");
+		if (vec[i] != "TRUE") {
+			break;
+		}
+	}
+
+	return result? "TRUE" : "FALSE";
+}
+
+INLINE std::string __expr___COMP_GT_(const std::string& x, const std::string& y)
+{
+	return (wiz::load_data::Utility::Compare(x, y, &builder) == "> 0") ? "TRUE" : "FALSE";
+}
+INLINE std::string __expr___COMP_LT_(const std::string& x, const std::string& y)
+{
+	return (wiz::load_data::Utility::Compare(x, y, &builder) == "< 0") ? "TRUE" : "FALSE";
+}
+
+
+INLINE std::string __expr___is_quoted_str(const std::string& x)
+{
+	if (x.size() >= 2 && x[0] == x.back() && x[0] == '\"') {
+		return "TRUE";
+	}
+	return "FALSE";
+}
+
+
+#define __expr___return_value() result 
+
+INLINE std::string __expr___element(wiz::load_data::UserType& global, const std::string& dir, const std::string& idx_str) {
+	int idx = atoi(idx_str.c_str());
+
+	if ('/' == dir[0])
+	{
+		wiz::load_data::UserType* ut = wiz::load_data::UserType::Find(&global, dir, &builder).second[0];
+		return wiz::ToString(ut->GetItemList(idx).Get(0));
+	}
+	else
+	{
+		return "NONE";
+	}
+}
+
+
+INLINE std::string __func___setElement(wiz::load_data::UserType& global, const wiz::ExcuteData& excuteData, const std::string& dir, const std::string& idx, const std::string& value)
+{
+	int _idx = stoi(idx);
+	wiz::load_data::UserType::Find(&global, dir, &builder).second[0]->SetItem(_idx, value);
+
+	return "";
+}
+
+INLINE std::string __expr___size(wiz::load_data::UserType* global, std::string& dir)
+{
+	auto x = wiz::load_data::UserType::Find(global, dir, &builder);
+	
+	if (x.first) {
+		return wiz::_toString(x.second[0]->GetItemListSize());
+	}
+	else {
+		throw "error in __expr___size function.";
+	}
+}
+
+//// todo - now.~ !
+INLINE std::string __expr___get(wiz::load_data::UserType* global, std::string data, std::map<std::string, std::string>& locals, std::map<std::string, std::string>& parameters)
+{
+	std::string result;
+	
+	if (data.size() > 1 && data[0] == '@') {
+		data.erase(data.begin());
+	}
+
+	// /./dir
+	try {
+		if(data.size() > 1 && data[0] == '/') {
+			std::string x = wiz::load_data::LoadData::Find(global, data, &builder);
+			if(!x.empty()) {
+				return x;
+			}
+		}
+	}
+	catch (...) {
+		
+	}
+	// $local.
+	try {
+		std::string x = wiz::load_data::LoadData::FindLocals(locals, data);
+		if(!x.empty()) {
+			return x;
+		}
+	}
+	catch (...) {
+
+	}
+	// $parameter.
+	try {
+		std::string x = wiz::load_data::LoadData::FindParameters(parameters, data);
+		if(!x.empty()) {
+			return x;
+		}
+	}
+	catch (...) {
+
+	}
+
+	return data;
+}
+
+INLINE bool __expr___NOT(const bool x) {
+	return !x;
+}
+
+INLINE std::string __expr___NOT(const std::string& x) {
+	return x == "TRUE" ? "FALSE" : "TRUE";
+}
+
+
+
+INLINE std::string __expr___rand(const std::string& first, const std::string& last) {
+	int x = stoi(first);
+	int y = stoi(last);
+	int istart = std::min<int>(x, y), ilast = std::max<int>(x, y);
+
+	return wiz::_toString(rand()%(ilast - istart + 1) + istart);
+}
+
+INLINE std::string __expr___pop_back(wiz::load_data::UserType* global, const std::string& dir)
+{
+	std::string result;
+
+	wiz::load_data::UserType* ut = nullptr;
+	auto finded = wiz::load_data::UserType::Find(global, dir, &builder);
+	ut = finded.second[0];
+
+	if (ut->IsItemList(ut->GetIListSize() - 1))
+	{
+		auto x = ut->GetItemList(ut->GetItemListSize() - 1);
+		result = wiz::ToString(x.Get(0));
+		ut->RemoveItemList(ut->GetItemListSize() - 1);
+	}
+	else {
+		auto x = ut->GetUserTypeList(ut->GetUserTypeListSize() - 1);
+		result = (x->ToString()); // chk!!
+		ut->RemoveUserTypeList(ut->GetUserTypeListSize() - 1);
+	}
+
+	return result;
+}
+
+
+INLINE std::string __func___swap(wiz::load_data::UserType* global, const wiz::ExcuteData& excuteData, 
+	const std::string& dir, const std::string& value1, const std::string& value2 )
+{	
+	if (value1 != value2) {
+		int x = atoi(value1.c_str());
+		int y = atoi(value2.c_str());
+
+		std::string temp = wiz::ToString(wiz::load_data::UserType::Find(global, dir, &builder).second[0]->GetItemList(x).Get(0));
+		std::string temp2 = wiz::ToString(wiz::load_data::UserType::Find(global, dir, &builder).second[0]->GetItemList(y).Get(0));
+
+		wiz::load_data::LoadData::SetData(*global, dir, x, temp2, "TRUE", excuteData, &builder);
+		wiz::load_data::LoadData::SetData(*global, dir, y, temp, "TRUE", excuteData, &builder);
+	}
+	return "";
+}
+
+
+INLINE std::string __func___findIndex(wiz::load_data::UserType* global, const wiz::ExcuteData& excuteData, const std::string& dir, const std::string& value)
+{
+	wiz::load_data::UserType ut;
+	wiz::load_data::LoadData::LoadDataFromString(wiz::load_data::UserType::Find(global, dir, &builder).second[0]->ToString(), ut);
+
+	for (int i = 0; i < ut.GetItemListSize(); ++i) {
+		if (ut.GetItemList(i).Get(0) == value) {
+			return wiz::toStr(i);
+		}
+	}
+
+	return "";
+}
+
+
+
+INLINE std::string __func___remove3(wiz::load_data::UserType* global, const wiz::ExcuteData& excuteData, const std::string& dir, const std::string& value, const std::string& condition)
+{
+	int idx = atoi(value.c_str());  // long long -> int?
+
+	wiz::load_data::LoadData::Remove(*global, dir, idx, condition, excuteData, &builder);
+
+	return "";
+}
+
+INLINE std::string __func___save_data_only2(wiz::load_data::UserType* global, const wiz::ExcuteData& excuteData, const std::string& dir_name, const std::string& file_name, const std::string& option)
+{
+	auto dir = wiz::load_data::UserType::Find(global, dir_name, &builder);
+	wiz::load_data::LoadData::SaveWizDB(*dir.second[0], file_name, option);
+
+	return "";
+}
+
+
+void Iterate(wiz::load_data::UserType* global, wiz::load_data::UserType* dirUT,
+	const std::vector<std::pair<bool, std::string>(*)(wiz::load_data::UserType*, wiz::ExcuteData&, std::map<std::string, std::string>&)>& ids,
+	const std::string& recursive, int depth, bool is_module, const std::string& module_name, const std::string& real_dir)
+{
+	for (int k = 0; k < ids.size(); ++k) {
+		for (int m = 0; m < dirUT->GetItemListSize(); ++m) {
+			std::map<std::string, std::string> param;
+
+			param.insert(std::make_pair("name", wiz::ToString(dirUT->GetItemList(m).GetName())));
+			param.insert(std::make_pair("value", wiz::ToString(dirUT->GetItemList(m).Get(0))));
+			param.insert(std::make_pair("is_user_type", "FALSE"));
+			param.insert(std::make_pair("real_dir", real_dir));
+
+
+			auto x = ids[k](global, wiz::ExcuteData(), param);
+			if (x.first) {
+				wiz::load_data::UserType ut;
+				wiz::load_data::LoadData::LoadDataFromString(x.second, ut);
+
+				if (!ut.GetItem("name").empty()) {
+					dirUT->GetItemList(m).SetName(ut.GetItem("name")[0].Get(0));
+				}
+				if (!ut.GetItem("value").empty()) {
+					dirUT->GetItemList(m).Set(0, ut.GetItem("value")[0].Get(0));
+				}
+			}
+		}
+		for (int m = 0; m < dirUT->GetUserTypeListSize(); ++m) {
+			std::map<std::string, std::string> param;
+
+			param.insert(std::make_pair("name", wiz::ToString(dirUT->GetUserTypeList(m)->GetName())));
+			param.insert(std::make_pair("value", "NONE"));
+			param.insert(std::make_pair("is_user_type", "TRUE"));
+			param.insert(std::make_pair("real_dir", real_dir));
+
+
+
+			auto x = ids[k](global, wiz::ExcuteData(), param);
+
+			if (x.first) {
+				wiz::load_data::UserType ut;
+				wiz::load_data::LoadData::LoadDataFromString(x.second, ut);
+
+				if (!ut.GetItem("name").empty()) {
+					dirUT->GetUserTypeList(m)->SetName(ut.GetItem("name")[0].Get(0));
+				}
+			}
+
+			if ("TRUE" == recursive) {
+				const std::string name = wiz::ToString(dirUT->GetName());
+				Iterate(global, dirUT->GetUserTypeList(m), ids, recursive, depth, is_module, module_name,
+					real_dir + "/" + (name.empty() ? "_" : name));
+			}
+		}
+	}
+}
+INLINE std::string __expr___remove_quoted(const std::string& x)
+{
+	if (x.size() >= 2) {
+		return x.substr(1, x.size() - 2);
+	}
+	else {
+		return "";
+	}
+}
+
+
+INLINE std::string __expr___move_up(std::string dir) {
+	if (wiz::String::startsWith(dir, "/."))
+	{
+		dir = wiz::String::substring(dir, 3);
+	}
+
+	wiz::StringTokenizer tokenizer(dir, "/", &builder, 1);
+	std::vector<std::string> tokenVec;
+	while (tokenizer.hasMoreTokens()) {
+		tokenVec.push_back(tokenizer.nextToken());
+	}
+	dir = "/./";
+	if (tokenVec.empty()) { return dir; }
+	for (int i = 0; i < tokenVec.size() - 1; ++i) {
+		dir = dir + tokenVec[i] + "/";
+	}
+	return dir;
+}
+
+
+INLINE std::string __func___load_only_data2(wiz::load_data::UserType* global, const wiz::ExcuteData& excuteData, const std::string& file_name, const std::string& dir_name, const std::string& lex_thr_num, const std::string& parse_thr_num)
+{
+	wiz::load_data::UserType* utTemp;
+
+	if (dir_name == "/./" || dir_name == "root") {
+		utTemp = global;
+	}
+	else {
+		utTemp = global->GetUserTypeItem(dir_name)[0];
+	}
+
+	wiz::load_data::UserType ut;
+	wiz::load_data::LoadData::LoadDataFromFile3(file_name, ut, std::stoi(parse_thr_num) - 1, std::stoi(lex_thr_num));
+
+	{
+
+		for (int i = 0; i < ut.GetCommentListSize(); ++i) {
+			utTemp->PushComment(std::move(ut.GetCommentList(i)));
+		}
+		int item_count = 0;
+		int userType_count = 0;
+
+		for (int i = 0; i < ut.GetIListSize(); ++i) {
+			if (ut.IsItemList(i)) {
+				utTemp->AddItem(std::move(ut.GetItemList(item_count).GetName()),
+					std::move(ut.GetItemList(item_count).Get(0)));
+				item_count++;
+			}
+			else {
+				utTemp->AddUserTypeItem(std::move(*ut.GetUserTypeList(userType_count)));
+				userType_count++;
+			}
+		}
+
+	}
+	return "";
+}
