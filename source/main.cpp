@@ -153,7 +153,7 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 			if (is_function && x == "event_result") {
 				wiz::load_data::UserType* _func = someUT.GetUserTypeList(ut_count);
 				std::string id;
-				std::map<std::string, std::string> param;
+				wiz::ArrayMap<std::string, std::string> param;
 
 				{
 					wiz::load_data::UserType* func = _func;
@@ -170,7 +170,7 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 							// for item, item in ut->GetUserTypeList(0), ... 
 							Do(_ut, resultUT);
 
-							value = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(resultUT) + "})";
+							value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(resultUT) + "})";
 
 							param[wiz::ToString(func->GetItemList(j).GetName())] = value;
 						}
@@ -203,12 +203,12 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 				for (int i = 0; i < depth + 1; ++i) {
 					result += "\t";
 				}
-				result += "std::map<std::string, std::string> param;\n";
+				result += "wiz::ArrayMap<std::string, std::string> param;\n";
 				for (const auto&x : param) {
 					for (int i = 0; i < depth + 1; ++i) {
 						result += "\t";
 					}
-					result += "param[\"" + x.first + "\"] = " + x.second + ";\n";
+					result += "param[\"" + x.key.first + "\"] = " + x.key.second + ";\n";
 				}
 
 				result += "\n";
@@ -236,7 +236,7 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 				result += "__expr___" + x + "(";
 			}
 			else {
-				result += "\"" + x + " =  { \" + CONCAT_ALL(std::vector<std::string>{ std::string() + "; // chk!!
+				result += "\"" + x + " =  { \" + CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + "; // chk!!
 			}
 
 			if (is_function && "element" == x) {
@@ -246,10 +246,10 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 				result += "global, ";
 			}
 			if (string_all) {
-				result += "std::vector<std::string>{ ";
+				result += "std::vector<wiz::DataType>{ ";
 			}
 			if (bool_all) {
-				result += "std::vector<std::string>{ ";
+				result += "std::vector<wiz::DataType>{ ";
 			}
 
 			if (is_function && x == "event_result") {
@@ -283,6 +283,9 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 
 			if (is_function && "get" == x) {
 				result += ", locals, parameters ";
+			}
+			if (is_function && "is_usertype_exist" == x) {
+				result += ", global, &builder";
 			}
 
 			if (is_function) {
@@ -323,7 +326,39 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 		}
 
 		//// check $push_back?, 
-		if (functionName == "$option")
+		if (functionName == "$assign_from_ut") {
+			std::string from, value, as;
+
+			{
+				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(0);
+				wiz::load_data::UserType _resultUT;
+				// for item, item in ut->GetUserTypeList(0), ... 
+				Do(*_ut, _resultUT);
+
+				from = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+			}
+			{
+				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
+				wiz::load_data::UserType _resultUT;
+				// for item, item in ut->GetUserTypeList(0), ... 
+				Do(*_ut, _resultUT);
+
+				value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+			}
+
+			{
+				wiz::load_data::UserType _ut;
+				as = eventUT.GetUserTypeList(i)->GetItemList(0).ToString();
+
+				as = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + \"" + as + "\" })";
+			}
+			result += "__func___assign_from_ut(*global, excuteData, locals, ";
+			result += as;
+			result += ", " + from + ", " + value + ");";
+
+			result += "\n";
+		}
+		else if (functionName == "$option")
 		{
 			option = eventUT.GetUserTypeList(i)->ToString();
 		}
@@ -333,12 +368,14 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			result += "\"";
 			result += ", ";
 
-			wiz::load_data::UserType* ut = eventUT.GetUserTypeList(i)->GetUserTypeList(0);
-			wiz::load_data::UserType resultUT;
-			// for item, item in ut->GetUserTypeList(0), ... 
-			Do(*ut, resultUT);
+			{
+				wiz::load_data::UserType* ut = eventUT.GetUserTypeList(i)->GetUserTypeList(0);
+				wiz::load_data::UserType resultUT;
+				// for item, item in ut->GetUserTypeList(0), ... 
+				Do(*ut, resultUT);
 
-			result += "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(resultUT) + "})";
+				result += "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(resultUT) + "})";
+			}
 
 			if (eventUT.GetUserTypeList(i)->GetUserTypeListSize() >= 2) {
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -346,7 +383,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				result += ", CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				result += ", CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			else {
 				result += ", \"TRUE\"";
@@ -365,7 +402,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				dir = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				dir = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -373,7 +410,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				value = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 
 			result += "__func___assign2(*global, excuteData, locals, ";
@@ -446,7 +483,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				//Do(_ut, resultUT);
 
-				//dir = "CONCAT_ALL(std::vector<std::string>{ " + PrintSomeUT(resultUT) + "})";
+				//dir = "CONCAT_ALL(std::vector<wiz::DataType>{ " + PrintSomeUT(resultUT) + "})";
 			}
 			else ///val->Ge
 			{
@@ -455,7 +492,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*ut, resultUT);
 
-				dir = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(resultUT) + "})";
+				dir = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(resultUT) + "})";
 				num++;
 			}
 
@@ -466,7 +503,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*ut, resultUT);
 
-				condition = "CONCAT_ALL(std::vector<std::string>{ std::string() +  " + PrintSomeUT(resultUT) + "})";
+				condition = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() +  " + PrintSomeUT(resultUT) + "})";
 			}
 
 			{
@@ -475,7 +512,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*ut, resultUT);
 
-				value = "CONCAT_ALL(std::vector<std::string>{ std::string() +  " + PrintSomeUT(resultUT) + "})";
+				value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() +  " + PrintSomeUT(resultUT) + "})";
 			}
 
 			result += "__func___insert(*global, excuteData, " + (dir)+", " + (value)+", " + (condition)+"); \n";
@@ -488,7 +525,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			wiz::load_data::UserType* func = eventUT.GetUserTypeList(i);
 			std::string id;
 			
-			std::map<std::string, std::string> param;
+			wiz::ArrayMap<std::string, std::string> param;
 
 			for (int j = 0; j < func->GetItemListSize(); ++j) {
 				if ("id" == wiz::ToString(func->GetItemList(j).GetName())) {
@@ -503,7 +540,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					/// for item, item in ut->GetUserTypeList(0), ... 
 					//Do(_ut, resultUT);
 
-					//value = "CONCAT_ALL(std::vector<std::string>{ " + PrintSomeUT(resultUT) + "})";
+					//value = "CONCAT_ALL(std::vector<wiz::DataType>{ " + PrintSomeUT(resultUT) + "})";
 
 					param[wiz::ToString(func->GetItemList(j).GetName())] = value;
 				}
@@ -535,12 +572,12 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			for (int i = 0; i < depth + 1; ++i) {
 				result += "\t";
 			}
-			result += "std::map<std::string, std::string> param;\n";
+			result += "wiz::ArrayMap<std::string, std::string> param;\n";
 			for (const auto&x : param) {
 				for (int i = 0; i < depth + 1; ++i) {
 					result += "\t";
 				}
-				result += "param[\"" + x.first + "\"] = " + x.second + ";\n";
+				result += "param[\"" + x.key.first + "\"] = " + x.key.second + ";\n";
 			}
 
 			result += "\n";
@@ -599,7 +636,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					// for item, item in ut->GetUserTypeList(0), ... 
 					Do(*_ut, _resultUT);
 
-					result += ", CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+					result += ", CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 				}
 
 				if (eventUT.GetUserTypeList(i)->GetUserTypeListSize() >= 2) {
@@ -623,7 +660,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					// for item, item in ut->GetUserTypeList(0), ... 
 					//Do(_ut, _resultUT);
 
-					data = (std::move(x)); //", CONCAT_ALL(std::vector<std::string>{ " + PrintSomeUT(_resultUT) + "})";
+					data = (std::move(x)); //", CONCAT_ALL(std::vector<wiz::DataType>{ " + PrintSomeUT(_resultUT) + "})";
 				}
 				result += ", " + data;
 			}
@@ -654,7 +691,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(_ut, _resultUT);
 
-				data = "{ result_change, CONCAT_ALL(std::vector<std::string>{ std::string() +  " + PrintSomeUT(_resultUT, false, 0, 1) + "}) };";
+				data = "{ result_change, CONCAT_ALL(std::vector<wiz::DataType>{ std::string() +  " + PrintSomeUT(_resultUT, false, 0, 1) + "}) };";
 			}
 			result += data;
 
@@ -668,7 +705,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				dir = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				dir = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -676,7 +713,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				idx = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				idx = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(2);
@@ -684,7 +721,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				value = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 
 			result += "__func___setElement(*global, excuteData, " + dir + ", " + idx + ", " + value + ");";
@@ -704,7 +741,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				value1 = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				value1 = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -712,7 +749,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				value2 = "CONCAT_ALL(std::vector<std::string>{ std::string() +  " + PrintSomeUT(_resultUT) + "})";
+				value2 = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() +  " + PrintSomeUT(_resultUT) + "})";
 			}
 			result += "__func___swap(global, excuteData, " + dir + ", " + value1 + ", " + value2 + ");\n";
 
@@ -726,7 +763,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				dir = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				dir = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -734,7 +771,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				value = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 
 			result += "__func___findIndex(global, excuteData, " + dir + ", " + value + ");\n";
@@ -749,7 +786,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				dir = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				dir = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -757,7 +794,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				value = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				value = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			if (eventUT.GetUserTypeList(i)->GetUserTypeListSize() >= 3) {
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(2);
@@ -765,7 +802,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				condition = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				condition = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 
 			result += "__func___remove3(global, excuteData, " + dir + ", " + value + ", " + condition + ");\n";
@@ -782,7 +819,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 
 				if (listName.size() >= 2 && listName[0] == '\"' && listName.back() == '\"')
 				{
-					result += std::string("") + "std::cout << " + listName + ";\n";
+					result += std::string("") + "std::cout << " + listName + ".ToString()" + ";\n";
 				}
 				else if (listName.size() == 2 && listName[0] == '\\' && listName[1] == 'n')
 				{
@@ -800,7 +837,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 						// for item, item in ut->GetUserTypeList(0), ... 
 						Do(_ut, _resultUT);
 
-						temp = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+						temp = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 					}
 
 					result += "if (" + temp + ".empty()) {\n";
@@ -821,7 +858,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 						// for item, item in ut->GetUserTypeList(0), ... 
 						Do(_ut, _resultUT);
 
-						temp = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+						temp = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 					}
 
 					if (temp != listName) // chk 
@@ -866,7 +903,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					// for item, item in ut->GetUserTypeList(0), ... 
 					Do(_ut, _resultUT);
 
-					name = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+					name = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 				}
 				result += "std::cout << " + name + ";\n";
 			}
@@ -881,7 +918,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					// for item, item in ut->GetUserTypeList(0), ... 
 					Do(*_ut, _resultUT);
 
-					start = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+					start = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 				}
 				{
 					wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(2);
@@ -889,7 +926,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					// for item, item in ut->GetUserTypeList(0), ... 
 					Do(*_ut, _resultUT);
 
-					last = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+					last = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 				}
 
 				std::string listName = wiz::ToString(val->GetUserTypeList(0)->GetItemList(0).Get(0));
@@ -900,7 +937,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					// for item, item in ut->GetUserTypeList(0), ... 
 					Do(_ut, _resultUT);
 
-					listName = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+					listName = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 				}
 
 				result += "{\n";
@@ -928,7 +965,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			std::string id;
 			wiz::load_data::UserType* func = _func.GetUserTypeList(0);
 
-			std::map<std::string, std::string> param;
+			wiz::ArrayMap<std::string, std::string> param;
 
 			for (int j = 0; j < func->GetItemListSize(); ++j) {
 				if ("id" == wiz::ToString(func->GetItemList(j).GetName())) {
@@ -943,7 +980,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					/// for item, item in ut->GetUserTypeList(0), ... 
 					//Do(_ut, resultUT);
 
-					//value = "CONCAT_ALL(std::vector<std::string>{ " + PrintSomeUT(resultUT) + "})";
+					//value = "CONCAT_ALL(std::vector<wiz::DataType>{ " + PrintSomeUT(resultUT) + "})";
 
 					param[wiz::ToString(func->GetItemList(j).GetName())] = value;
 				}
@@ -972,12 +1009,12 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			for (int i = 0; i < depth + 1; ++i) {
 				result += "\t";
 			}
-			result += "std::map<std::string, std::string> param;\n";
+			result += "wiz::ArrayMap<std::string, std::string> param;\n";
 			for (const auto&x : param) {
 				for (int i = 0; i < depth + 1; ++i) {
 					result += "\t";
 				}
-				result += "param[\"" + x.first + "\"] = " + x.second + ";\n";
+				result += "param[\"" + x.key.first + "\"] = " + x.key.second + ";\n";
 			}
 
 			result += "\n";
@@ -1004,8 +1041,8 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			result += "wiz::load_data::LoadData::LoadDataFromString(data, val);\n";
 			result += "std::string rex = LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(0)->ToString(), excuteData, &builder);\n";
 			result += "rex = rex.substr(1, rex.size() - 2);\n";
-			result += "std::vector<std::string> sval;\n";
-			result += "std::vector<std::string> scondition;\n";
+			result += "std::vector<wiz::DataType> sval;\n";
+			result += "std::vector<wiz::DataType> scondition;\n";
 			result += "std::string start_dir = \"root\";\n";
 
 			result += "if (val.GetUserTypeListSize() >= 3)\n";
@@ -1052,7 +1089,95 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					ids[k] = "__module_" + wiz::toStr(module_name.size()) + "_" + module_name + "_" + wiz::toStr(module_name.size()) + "_" + ids[k];
 				}
 			}
+			if (func->GetUserTypeListSize() >= 3) {
+				wiz::load_data::UserType* ut = func->GetUserTypeList(2);
+				wiz::load_data::UserType resultUT;
 
+				Do(*ut, resultUT);
+
+				recursive = PrintSomeUT(resultUT);
+			}
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += "{\n";
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += std::string() + "std::string dir = " + "\"" + ToStr(dir) + "\"" + ";\n";
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += "std::vector<wiz::load_data::UserType*> dirUTVec = wiz::load_data::UserType::Find(global, dir, &builder).second;\n";
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += "for (int t = 0; t < dirUTVec.size(); ++t) {\n";
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += "Iterate(global, dirUTVec[t], ";
+			result += "std::vector<std::pair<bool, wiz::DataType> (*)(wiz::load_data::UserType*, wiz::ExcuteData&, wiz::ArrayMap<std::string, std::string>&)>{ ";
+			for (int j = 0; j < ids.size(); ++j) {
+				result += ids[j];
+
+				if (j < ids.size() - 1) {
+					result += ", ";
+				}
+			}
+			result += "}, ";
+			result += recursive + ", " + wiz::_toString(depth) + ", " + (is_module ? "true" : "false");
+
+			if (is_module) {
+				result += ", " + module_name + ", " + "wiz::load_data::LoadData::GetRealDir(dir, dirUTVec[t], &builder)" + ", parameters" + ");\n";
+			}
+			else {
+				result += std::string() + ", " + "\"empty_module_name\"" + ", " +
+					"wiz::load_data::LoadData::GetRealDir(dir, dirUTVec[t], &builder)" + ", parameters"+ ");\n";
+			}
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += "}\n";
+
+			for (int i = 0; i < depth + 1; ++i) {
+				result += "\t";
+			}
+			result += "}\n";
+			result += "\n";
+		}
+		else if (functionName == "$iterate2") { // re.. need fixed?
+			// dir - no tobool4
+			// event ids - no tobool4
+			// (recursive : FALSE default?, use tobool4)
+			std::string dir;
+			std::vector<std::string> ids;
+			std::string recursive = "FALSE";
+
+			wiz::load_data::UserType* func = eventUT.GetUserTypeList(i);
+			dir = ToStr(func->GetUserTypeList(0)->ToString());
+
+			for (int j = 0; j < func->GetUserTypeList(1)->GetItemListSize(); ++j) {
+				ids.push_back(ToStr(wiz::ToString(func->GetUserTypeList(1)->GetItemList(j).Get(0))));
+			}
+			for (int k = 0; k < ids.size(); ++k) {
+				if (!is_module) {
+					ids[k] = "__event__" + ids[k];
+				}
+				else {
+					ids[k] = "__module_" + wiz::toStr(module_name.size()) + "_" + module_name + "_" + wiz::toStr(module_name.size()) + "_" + ids[k];
+				}
+			}
 			if (func->GetUserTypeListSize() >= 3) {
 				wiz::load_data::UserType* ut = func->GetUserTypeList(2);
 				wiz::load_data::UserType resultUT;
@@ -1089,8 +1214,8 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			for (int i = 0; i < depth + 1; ++i) {
 				result += "\t";
 			}
-			result += "Iterate(global, dirUTVec[t], ";
-			result += "std::vector<std::pair<bool, std::string> (*)(wiz::load_data::UserType*, wiz::ExcuteData&, std::map<std::string, std::string>&)>{ ";
+			result += "Iterate2(global, dirUTVec[t], ";
+			result += "std::vector<std::pair<bool, wiz::DataType> (*)(wiz::load_data::UserType*, wiz::ExcuteData&, wiz::ArrayMap<std::string, std::string>&)>{ ";
 			for (int j = 0; j < ids.size(); ++j) {
 				result += ids[j];
 
@@ -1102,11 +1227,11 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			result += recursive + ", " + wiz::_toString(depth) + ", " + (is_module ? "true" : "false");
 			
 			if (is_module) {
-				result += ", " + module_name +  ", " + "wiz::load_data::LoadData::GetRealDir(dir, dirUTVec[t], &builder)" + ");\n";
+				result += ", " + module_name +  ", " + "wiz::load_data::LoadData::GetRealDir(dir, dirUTVec[t], &builder)" + ", parameters" + ");\n";
 			}
 			else {
 				result += std::string() + ", " + "\"empty_module_name\"" + ", " + 
-					"wiz::load_data::LoadData::GetRealDir(dir, dirUTVec[t], &builder)" + ");\n";
+					"wiz::load_data::LoadData::GetRealDir(dir, dirUTVec[t], &builder)" + ", parameters" + ");\n";
 			}
 
 			for (int i = 0; i < depth + 1; ++i) {
@@ -1133,7 +1258,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				dir_name = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				dir_name = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -1146,7 +1271,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 					&& name[name.size() - 3] == '\\' && name[name.size() - 2] == '\"') {
 					name = "\"" + name.substr(3, name.size() - 6) + "\"";
 				}
-				file_name = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + name + "})";
+				file_name = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + name + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(2);
@@ -1154,7 +1279,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				option = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				option = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 
 			result += "__func___save_data_only2(global, excuteData, " + dir_name + ", " + file_name + ", " + option + ");\n";
@@ -1182,7 +1307,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 
 				std::cout << "name is " << name << "\n";
 
-				file_name = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + name + "})";
+				file_name = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + name + "})";
 			}
 			{
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(1);
@@ -1190,7 +1315,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				dir_name = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				dir_name = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			if (eventUT.GetUserTypeList(i)->GetUserTypeListSize() >= 3) {
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(2);
@@ -1198,7 +1323,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				lex_thr_num = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				lex_thr_num = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 			if (eventUT.GetUserTypeList(i)->GetUserTypeListSize() >= 4) {
 				wiz::load_data::UserType* _ut = eventUT.GetUserTypeList(i)->GetUserTypeList(3);
@@ -1206,7 +1331,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				// for item, item in ut->GetUserTypeList(0), ... 
 				Do(*_ut, _resultUT);
 
-				parse_thr_num = "CONCAT_ALL(std::vector<std::string>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
+				parse_thr_num = "CONCAT_ALL(std::vector<wiz::DataType>{ std::string() + " + PrintSomeUT(_resultUT) + "})";
 			}
 
 			result += "__func___load_only_data2(global, excuteData, " + file_name + ", " + dir_name + ", " + lex_thr_num + ", " + parse_thr_num + ");\n";
@@ -1332,20 +1457,20 @@ int main(int argc, char* argv[])
 							for (int j = 0; j < _global.GetUserTypeListSize(); ++j) {
 								if (_global.GetUserTypeList(j)->GetName() != "Event") {
 									if (_global.GetUserTypeList(j)->GetName() == "Main") {
-										outFile << "INLINE std::pair<bool, std::string> " << "__module_" << dir.size();
+										outFile << "INLINE std::pair<bool, wiz::DataType> " << "__module_" << dir.size();
 
 										outFile << "_" << dir << "_" << dir.size() << "_" << "Main" << "(wiz::load_data::UserType"
-											<< "* global, wiz::ExcuteData& excuteData, std::map<std::string, std::string>& parameters);" << "\n";
+											<< "* global, wiz::ExcuteData& excuteData, wiz::ArrayMap<std::string, std::string>& parameters);" << "\n";
 									}
 									continue;
 								}
 								const std::string event_name = wiz::ToString(_global.GetUserTypeList(j)->GetItem("id")[0].Get(0));
 
 								//// check name dupplication? - 00 ~ 99?
-								outFile << "INLINE std::pair<bool, std::string> ";
+								outFile << "INLINE std::pair<bool, wiz::DataType> ";
 								outFile << "__module_" + wiz::toStr(dir.size()) + "_" + dir + "_" + wiz::toStr(dir.size());
 								outFile << "_" << event_name << "(wiz::load_data::UserType"
-									<< "* global, wiz::ExcuteData& excuteData, std::map<std::string, std::string>& parameters);" << "\n";
+									<< "* global, wiz::ExcuteData& excuteData, wiz::ArrayMap<std::string, std::string>& parameters);" << "\n";
 							}
 						}
 
@@ -1415,20 +1540,20 @@ int main(int argc, char* argv[])
 							for (int j = 0; j < _global.GetUserTypeListSize(); ++j) {
 								if (_global.GetUserTypeList(j)->GetName() != "Event") {
 									if (_global.GetUserTypeList(j)->GetName() == "Main") {
-										outFile << "INLINE std::pair<bool, std::string> " << "__module_" << dir.size();
+										outFile << "INLINE std::pair<bool, wiz::DataType> " << "__module_" << dir.size();
 
 										outFile << "_" << dir << "_" << dir.size() << "_" << "Main" << "(wiz::load_data::UserType"
-											<< "* global, wiz::ExcuteData& excuteData, std::map<std::string, std::string>& parameters);" << "\n";
+											<< "* global, wiz::ExcuteData& excuteData, wiz::ArrayMap<std::string, std::string>& parameters);" << "\n";
 									}
 									continue;
 								}
 								const std::string event_name = wiz::ToString(_global.GetUserTypeList(j)->GetItem("id")[0].Get(0));
 
 								//// check name dupplication? - 00 ~ 99 ??
-								outFile << "INLINE std::pair<bool, std::string> ";
+								outFile << "INLINE std::pair<bool, wiz::DataType> ";
 								outFile << "__module_" + wiz::toStr(dir.size()) + "_" + dir + "_" + wiz::toStr(dir.size());
 								outFile << "_" << event_name << "(wiz::load_data::UserType"
-									<< "* global, wiz::ExcuteData& excuteData, std::map<std::string, std::string>& parameters);" << "\n";
+									<< "* global, wiz::ExcuteData& excuteData, wiz::ArrayMap<std::string, std::string>& parameters);" << "\n";
 							}
 						}
 
@@ -1444,15 +1569,15 @@ int main(int argc, char* argv[])
 
 			// user defined functions declaration?
 			const std::string main_name = wiz::ToString(MainUT.GetUserTypeItem("$call")[0]->GetItem("id")[0].Get(0));
-			outFile << "INLINE std::pair<bool, std::string> " << "__event__" << main_name << "(wiz::load_data::UserType"
-				<< "* global, wiz::ExcuteData& excuteData, std::map<std::string, std::string>& parameters);" << "\n";
+			outFile << "INLINE std::pair<bool, wiz::DataType> " << "__event__" << main_name << "(wiz::load_data::UserType"
+				<< "* global, wiz::ExcuteData& excuteData, wiz::ArrayMap<std::string, std::string>& parameters);" << "\n";
 			for (int i = 0; i < EventUT.size(); ++i) {
 				const std::string event_name = wiz::ToString(EventUT[i]->GetItem("id")[0].Get(0));
 				if (event_name == main_name) {
 					continue;
 				}
-				outFile << "INLINE std::pair<bool, std::string> " << "__event__" << event_name << "(wiz::load_data::UserType"
-					<< "* global, wiz::ExcuteData& excuteData, std::map<std::string, std::string>& parameters);" << "\n";
+				outFile << "INLINE std::pair<bool, wiz::DataType> " << "__event__" << event_name << "(wiz::load_data::UserType"
+					<< "* global, wiz::ExcuteData& excuteData, wiz::ArrayMap<std::string, std::string>& parameters);" << "\n";
 			}
 		}
 
@@ -1492,9 +1617,9 @@ int main(int argc, char* argv[])
 				<< "\t} "
 				<< "\texcuteData.chkInfo = true;"
 				<< "\texcuteData.pEvents = &events;"
-				<< "\n\tstd::map<std::string, std::string> parameters;\n"
+				<< "\n\twiz::ArrayMap<std::string, std::string> parameters;\n"
 				<< "\tstd::cout << " << "__event__" << wiz::ToString(MainUT.GetUserTypeItem("$call")[0]->GetItem("id")[0].Get(0))
-					<< "(&global, excuteData, parameters).second << std::endl;\n"
+					<< "(&global, excuteData, parameters).second.ToString() << std::endl;\n"
 				<< "\treturn 0;\n"
 				<< "}\n\n";
 		}
@@ -1505,16 +1630,16 @@ int main(int argc, char* argv[])
 			for (int i = 0; i < EventUT.size(); ++i) {
 				const std::string event_name = wiz::ToString(EventUT[i]->GetItem("id")[0].Get(0));
 				
-				outFile << "INLINE std::pair<bool, std::string> " << "__event__" << event_name << "(wiz::load_data::UserType"
+				outFile << "INLINE std::pair<bool, wiz::DataType> " << "__event__" << event_name << "(wiz::load_data::UserType"
 					<< "* global, wiz::ExcuteData& excuteData";
 				//if (event_name != main_name) 
 				{
-					outFile << ", std::map<std::string, std::string>& parameters";
+					outFile << ", wiz::ArrayMap<std::string, std::string>& parameters";
 				}
 				outFile << ")" << "\n"
 				<< "{\n"
-				<< "\tstd::map<std::string, std::string> locals;\n"
-				<< "\tstd::string result;\n"
+				<< "\twiz::ArrayMap<std::string, std::string> locals;\n"
+				<< "\twiz::DataType result;\n"
 				<< "\tbool result_change = false;\n"
 				<< "\tstd::string option;\n\n";
 
@@ -1561,14 +1686,14 @@ int main(int argc, char* argv[])
 									//// check name dupplication? - 00 ~ 99
 									event_name = std::string("") + "__module_" + wiz::toStr(dir.size()) + "_" + dir + "_" + wiz::toStr(dir.size()) + "_" + event_name;
 
-									outFile << "INLINE std::pair<bool, std::string> " << event_name << "(wiz::load_data::UserType"
+									outFile << "INLINE std::pair<bool, wiz::DataType> " << event_name << "(wiz::load_data::UserType"
 										<< "* _global, wiz::ExcuteData& excuteData"; // check!
-									outFile << ", std::map<std::string, std::string>& parameters";
+									outFile << ", wiz::ArrayMap<std::string, std::string>& parameters";
 
 									outFile << ")" << "\n"
 										<< "{\n"
-										<< "\tstd::map<std::string, std::string> locals;\n"
-										<< "\tstd::string result;\n"
+										<< "\twiz::ArrayMap<std::string, std::string> locals;\n"
+										<< "\twiz::DataType result;\n"
 										<< "\tbool result_change = false;\n"
 										<< "\twiz::load_data::UserType* global = _global->GetUserTypeItem(\"" + dir + "\")[0];\n"
 										<< "\tstd::string option;\n\n";
@@ -1586,14 +1711,14 @@ int main(int argc, char* argv[])
 							//// check name dupplication? - 00 ~ 99
 							event_name = std::string("") + "__module_" + wiz::toStr(dir.size()) + "_" + dir + "_" + wiz::toStr(dir.size()) + "_" + event_name;
 
-							outFile << "INLINE std::pair<bool, std::string> " << event_name << "(wiz::load_data::UserType"
+							outFile << "INLINE std::pair<bool, wiz::DataType> " << event_name << "(wiz::load_data::UserType"
 								<< "* global, wiz::ExcuteData& excuteData";
-							outFile << ", std::map<std::string, std::string>& parameters";
+							outFile << ", wiz::ArrayMap<std::string, std::string>& parameters";
 
 							outFile << ")" << "\n"
 								<< "{\n"
-								<< "\tstd::map<std::string, std::string> locals;\n"
-								<< "\tstd::string result;\n"
+								<< "\twiz::ArrayMap<std::string, std::string> locals;\n"
+								<< "\twiz::DataType result;\n"
 								<< "\tbool result_change = false;\n"
 								<< "\tstd::string option;\n\n";
 
@@ -1655,14 +1780,14 @@ int main(int argc, char* argv[])
 																	 //// check name dupplication? - 00 ~ 99
 									event_name = std::string("") + "__module_" + wiz::toStr(dir.size()) + "_" + dir + "_" + wiz::toStr(dir.size()) + "_" + event_name;
 
-									outFile << "INLINE std::pair<bool, std::string> " << event_name << "(wiz::load_data::UserType"
+									outFile << "INLINE std::pair<bool, wiz::DataType> " << event_name << "(wiz::load_data::UserType"
 										<< "* _global, wiz::ExcuteData& excuteData"; // check!
-									outFile << ", std::map<std::string, std::string>& parameters";
+									outFile << ", wiz::ArrayMap<std::string, std::string>& parameters";
 
 									outFile << ")" << "\n"
 										<< "{\n"
-										<< "\tstd::map<std::string, std::string> locals;\n"
-										<< "\tstd::string result;\n"
+										<< "\twiz::ArrayMap<std::string, std::string> locals;\n"
+										<< "\twiz::DataType result;\n"
 										<< "\tbool result_change = false;\n"
 										<< "\twiz::load_data::UserType* global = _global->GetUserTypeItem(\"" + dir + "\")[0];\n"
 										<< "\tstd::string option;\n\n";
@@ -1680,14 +1805,14 @@ int main(int argc, char* argv[])
 							//// check name dupplication? - 00 ~ 99
 							event_name = std::string("") + "__module_" + wiz::toStr(dir.size()) + "_" + dir + "_" + wiz::toStr(dir.size()) + "_" + event_name;
 
-							outFile << "INLINE std::pair<bool, std::string> " << event_name << "(wiz::load_data::UserType"
+							outFile << "INLINE std::pair<bool, wiz::DataType> " << event_name << "(wiz::load_data::UserType"
 								<< "* global, wiz::ExcuteData& excuteData";
-							outFile << ", std::map<std::string, std::string>& parameters";
+							outFile << ", wiz::ArrayMap<std::string, std::string>& parameters";
 
 							outFile << ")" << "\n"
 								<< "{\n"
-								<< "\tstd::map<std::string, std::string> locals;\n"
-								<< "\tstd::string result;\n"
+								<< "\twiz::ArrayMap<std::string, std::string> locals;\n"
+								<< "\twiz::DataType result;\n"
 								<< "\tbool result_change = false;\n"
 								<< "\tstd::string option;\n\n";
 
