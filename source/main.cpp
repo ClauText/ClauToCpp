@@ -208,7 +208,7 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 					for (int i = 0; i < depth + 1; ++i) {
 						result += "\t";
 					}
-					result += "param[\"" + x.key.first + "\"] = " + x.key.second + ";\n";
+					result += "param[\"" + x.first + "\"] = " + x.second + ";\n";
 				}
 
 				result += "\n";
@@ -577,7 +577,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				for (int i = 0; i < depth + 1; ++i) {
 					result += "\t";
 				}
-				result += "param[\"" + x.key.first + "\"] = " + x.key.second + ";\n";
+				result += "param[\"" + x.first + "\"] = " + x.second + ";\n";
 			}
 
 			result += "\n";
@@ -819,7 +819,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 
 				if (listName.size() >= 2 && listName[0] == '\"' && listName.back() == '\"')
 				{
-					result += std::string("") + "std::cout << " + listName + ".ToString()" + ";\n";
+					result += std::string("") + "std::cout << " + listName + ";\n";
 				}
 				else if (listName.size() == 2 && listName[0] == '\\' && listName[1] == 'n')
 				{
@@ -1014,7 +1014,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 				for (int i = 0; i < depth + 1; ++i) {
 					result += "\t";
 				}
-				result += "param[\"" + x.key.first + "\"] = " + x.key.second + ";\n";
+				result += "param[\"" + x.first + "\"] = " + x.second + ";\n";
 			}
 
 			result += "\n";

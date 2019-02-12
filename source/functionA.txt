@@ -454,7 +454,7 @@ void Iterate(wiz::load_data::UserType* global, wiz::load_data::UserType* dirUT,
 				}
 
 				auto pass = ut.GetItem("pass");
-				if (pass[0].Get(0).ToString() == "TRUE") {
+				if (pass.empty() == false && pass[0].Get(0).ToString() == "TRUE") {
 					return;
 				}
 			}
@@ -488,7 +488,7 @@ void Iterate(wiz::load_data::UserType* global, wiz::load_data::UserType* dirUT,
 				}
 
 				auto pass = ut.GetItem("pass");
-				if (pass[0].Get(0).ToString() == "TRUE") {
+				if (pass.empty() == false && pass[0].Get(0).ToString() == "TRUE") {
 					return;
 				}
 			}
