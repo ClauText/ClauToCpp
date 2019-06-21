@@ -138,7 +138,7 @@ std::string PrintSomeUT(wiz::load_data::UserType& someUT, bool expr=false, int d
 				}
 			}
 
-			if (wiz::String::startsWith(x, "$") && x.size() > 1) {
+			if (wiz::String::startsWith(x, "$") && x.size() > 1) { //cf) $."regex" ?
 				x.erase(x.begin());
 				is_function = true;
 
@@ -1039,7 +1039,7 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			result += "std::string data = \"" + ToStr(eventUT.GetUserTypeList(i)->ToString()) + "\";\n";
 			result += "wiz::load_data::UserType val;\n";
 			result += "wiz::load_data::LoadData::LoadDataFromString(data, val);\n";
-			result += "std::string rex = LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(0)->ToString(), excuteData, &builder);\n";
+			result += "std::string rex = wiz::load_data::LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(0)->ToString(), excuteData, &builder);\n";
 			result += "rex = rex.substr(1, rex.size() - 2);\n";
 			result += "std::vector<wiz::DataType> sval;\n";
 			result += "std::vector<wiz::DataType> scondition;\n";
@@ -1056,11 +1056,11 @@ std::string ConvertFunction(wiz::load_data::UserType* global, wiz::load_data::Us
 			result += "}\n";
 
 			result += "if (val.GetUserTypeListSize() >= 4) {\n";
-			result += "start_dir = LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(val.GetUserTypeListSize() - 2)->ToString(), excuteData, &builder);\n";
+			result += "start_dir = wiz::load_data::LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(val.GetUserTypeListSize() - 2)->ToString(), excuteData, &builder);\n";
 			result += "	}\n";
 			result += "bool recursive = true;\n";
 			result += "	if (val.GetUserTypeListSize() >= 5) {\n";
-			result += "	recursive = LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(val.GetUserTypeListSize() - 1)->ToString(), excuteData, &builder) == \"TRUE\" ? true : false;\n";
+			result += "	recursive = wiz::load_data::LoadData::ToBool4(nullptr, *global, val.GetUserTypeList(val.GetUserTypeListSize() - 1)->ToString(), excuteData, &builder) == \"TRUE\" ? true : false;\n";
 			result += "	}\n";
 
 			result += "	wiz::load_data::LoadData::ReplaceDataType1_2(*global, rex, sval, scondition, start_dir, excuteData, recursive, &builder);\n";
